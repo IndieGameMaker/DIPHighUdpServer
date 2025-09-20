@@ -2,8 +2,10 @@
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
-        Console.WriteLine("Hello, World!");
+        Console.WriteLine("=== UDP 게임서버 시작===");
+
+        const int port = 9999;
     }
 }
