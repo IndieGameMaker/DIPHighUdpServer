@@ -83,6 +83,78 @@ public class UdpGameServer
         _cancellationTokenSource = new CancellationTokenSource();
     }
 
+    // 서버 시작 메소드
+    public async Task StartAsync()
+    {
+        try
+        {
+            // 소켓 바인딩
+            _socket.Bind(_serverEndPoint);
+            // 서버 실행 상태로 변경
+            _isRunning = true;
+            
+            Console.WriteLine($"UDP 게임 서버가 포트{_port}에서 시작되었습니다.");
+            
+            // 멀티스레드로 데이터 수신 및 처리
+            // 수신 로직 (스레드 동작)
+            var receiveTask = Task.Run(() => ReceiveLoopAsync(_cancellationTokenSource.Token));
+            // TODO: 처리로직
+            
+            // 작업이 완료될 때 까지 대기
+            await Task.WhenAll(receiveTask);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"서버 시작중 오류 발생 {e.Message}");
+            throw;
+        }
+    }
+    
+    // 데이터 수신 루프 (별도의 스레드에서 실행)
+    private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                // 메모리 풀에서 사용할 버퍼를 대여
+                var buffer = _bufferPool.Rent(_bufferSize);
+                
+                // 클라이언트 엔드포인 저장할 변수
+                var endPoint = new IPEndPoint(IPAddress.Any, 0);
+                EndPoint clientEndPoint = endPoint;
+                
+                // Task.Run 비동기 실행
+                var result = await Task.Run(() =>
+                    {
+                        return _socket.ReceiveFrom(buffer, 0, _bufferSize, SocketFlags.None, ref clientEndPoint );
+                    }, cancellationToken);
+
+                // 데이터를 수신한 경우
+                if (result > 0)
+                {
+                    // 수신된 데이터를 큐에 추가
+                    _receiveQueue.Enqueue(new ReceivedData
+                    {
+                        Buffer = buffer,
+                        Length = result,
+                        ClientEndPoint = (IPEndPoint) clientEndPoint,
+                    });
+                }
+                else
+                {
+                    // 사용하지 않는 버퍼는 반환
+                    _bufferPool.Return(buffer);
+                    await Task.Delay(1, cancellationToken);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"데이터 수신중 오류 발생: {e.Message}");
+                await Task.Delay(10, cancellationToken);
+            }
+        }
+    }
 }
 
 
