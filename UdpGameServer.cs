@@ -47,10 +47,11 @@ public class UdpGameServer
     // 메모리 풀을 사용해서 버퍼 재사용
     private readonly ArrayPool<byte> _bufferPool;
     
-    // TODO: 수신 패킷을 저장하는 큐(스레드 세이프)
-    // private readonly ConcurrentQueue<> _receiveQueue;
+    // 수신 패킷을 저장하는 큐(스레드 세이프)
+    private readonly ConcurrentQueue<ReceivedData> _receiveQueue;
     
     // TODO: 접속한 클라이언트 정보를 저장하는 딕셔너리
+    private readonly ConcurrentDictionary<string, ClientInfo> _clients;
     
     // 취소 토큰
     private readonly CancellationTokenSource _cancellationTokenSource;
@@ -63,6 +64,25 @@ public class UdpGameServer
     
     // 서버 포트 번호
     private readonly int _port;
+    
+    // 생성자
+    public UdpGameServer(int port)
+    {
+        _port = port;
+        // 소켓 생성 (IPv4, UDP 소켓)
+        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        _serverEndPoint = new IPEndPoint(IPAddress.Any, port);
+        
+        // 버퍼 설정 (공유 메모리 풀)
+        _bufferPool = ArrayPool<byte>.Shared;
+        // 스레드 세이프한 수신 Queue 초기화
+        _receiveQueue = new ConcurrentQueue<ReceivedData>();
+        // 클라이언트 딕셔너리 초기화
+        _clients = new ConcurrentDictionary<string, ClientInfo>();
+        // 취소 토큰 소스 초기화
+        _cancellationTokenSource = new CancellationTokenSource();
+    }
+
 }
 
 
