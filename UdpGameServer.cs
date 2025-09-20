@@ -98,10 +98,11 @@ public class UdpGameServer
             // 멀티스레드로 데이터 수신 및 처리
             // 수신 로직 (스레드 동작)
             var receiveTask = Task.Run(() => ReceiveLoopAsync(_cancellationTokenSource.Token));
-            // TODO: 처리로직
+            // 메시지 처리로직
+            var processTask = Task.Run(() => ProcessLoopAsync(_cancellationTokenSource.Token));
             
             // 작업이 완료될 때 까지 대기
-            await Task.WhenAll(receiveTask);
+            await Task.WhenAll(receiveTask, processTask);
         }
         catch (Exception e)
         {
@@ -124,15 +125,16 @@ public class UdpGameServer
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
                 EndPoint clientEndPoint = endPoint;
                 
-                // Task.Run 비동기 실행
+                // Task.Run 비동기 실행 (확인 필요)
                 var result = await Task.Run(() =>
-                    {
-                        return _socket.ReceiveFrom(buffer, 0, _bufferSize, SocketFlags.None, ref clientEndPoint );
-                    }, cancellationToken);
+                {
+                    return _socket.ReceiveFrom(buffer, 0, _bufferSize, SocketFlags.None, ref clientEndPoint );
+                }, cancellationToken);
 
                 // 데이터를 수신한 경우
                 if (result > 0)
                 {
+                    Console.WriteLine("메시지 수신" + Encoding.UTF8.GetString(buffer, 0, result));
                     // 수신된 데이터를 큐에 추가
                     _receiveQueue.Enqueue(new ReceivedData
                     {
@@ -154,6 +156,44 @@ public class UdpGameServer
                 await Task.Delay(10, cancellationToken);
             }
         }
+    }
+    
+    // 수신 데이터 처리 메서드
+    private async Task ProcessLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested && _isRunning)
+        {
+            if (_receiveQueue.TryDequeue(out var receivedData)) // 큐에서 데이터 추출
+            {
+                var message = Encoding.UTF8.GetString(receivedData.Buffer, 0, receivedData.Length);
+                Console.WriteLine($"수신된 메시지: {message}");
+                
+                // 간단한 에코 처리
+                var response = $"ECHO: {message}";
+                var responseBytes = Encoding.UTF8.GetBytes(response);
+
+                await Task.Run(() =>
+                {
+                    _socket.SendTo(responseBytes, SocketFlags.None, receivedData.ClientEndPoint);
+                });
+                
+                _bufferPool.Return(receivedData.Buffer);
+            }
+        }
+    }
+
+    public async Task StopAsync()
+    {
+        _isRunning = false;
+        _cancellationTokenSource.Cancel();
+
+        await Task.Delay(100);
+        
+        // 소켓 종료
+        _socket.Close();
+        _socket.Dispose();
+
+        Console.WriteLine("UDP 게임 서버 종료");
     }
 }
 

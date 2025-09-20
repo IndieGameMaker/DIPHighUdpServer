@@ -18,7 +18,12 @@ class Program
             Console.WriteLine("서버 종료 중 ...");
             
             // 서버 종료 작업을 처리
-            // TODO : StopServer 처리
+            // StopServer 처리
+            Task.Run(async () =>
+            {
+                await server.StopAsync();
+                Environment.Exit(0);
+            });
         };        
         
         try
