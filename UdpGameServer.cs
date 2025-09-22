@@ -196,11 +196,43 @@ public class UdpGameServer
     }
 
     // 수신된 데이터 처리 메서드
-    private async Task ProcessReceivedDataAsync(ReceivedData receivedData)
+    private async Task ProcessReceivedDataAsync(ReceivedData data)
     {
         try
         {
-
+            // 수신된 데이터를 게임 메시지로 역직렬화 처리
+            var gameMessage = GameProtocal.Deserialize(data.Buffer, data.Length);
+            Console.WriteLine($"수신 메시지: {gameMessage.Type} | EndPoint: {data.ClientEndPoint} | 플레이어ID: {gameMessage.PlayerId}");
+            
+            // 메시지 타입에 따라 분기
+            switch (gameMessage.Type)
+            {
+                case MessageType.Connect:
+                    break;
+                case MessageType.ConnectResponse:
+                    break;
+                case MessageType.Disconnect:
+                    break;
+                case MessageType.PlayerJoin:
+                    break;
+                case MessageType.PlayerLeave:
+                    break;
+                case MessageType.TransformUpdate:
+                    break;
+                case MessageType.TransformSync:
+                    break;
+                case MessageType.RpcCall:
+                    break;
+                case MessageType.RpcCallResponse:
+                    break;
+                case MessageType.Heartbeat:
+                    break;
+                case MessageType.Echo:
+                    break;
+                default:
+                    Console.WriteLine("알수없는 메시지 타입");
+                    break;
+            }
         }
         catch (Exception e)
         {
