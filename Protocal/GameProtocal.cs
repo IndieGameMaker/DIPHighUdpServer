@@ -1,4 +1,7 @@
 using System.Text.Json;
+
+namespace HighUDPServer.Protocal;
+
 // 게임 프로토콜 메시지 타입 정의
 public enum MessageType : byte
 {
@@ -23,7 +26,7 @@ public enum MessageType : byte
     Heartbeat = 0x40,
     Echo = 0x41,
 }
-    
+
 // 메시지 기본 구조체 : 공통 헤더 부분
 public struct GameMessage
 {

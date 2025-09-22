@@ -17,7 +17,8 @@ public struct ReceivedData
 // 클라이언트 정보를 저장하는 클래스
 public class ClientInfo
 {
-    public string playerId { get; set; } = string.Empty;    // Player ID
+    public string PlayerId { get; set; } = string.Empty;    // Player ID
+    public string PlayerName { get; set; } = string.Empty;  // 플레이어 닉네임
     public IPEndPoint EndPoint { get; set; } = null;        // 클라이언트 EndPoint
     public DateTime LastHeartbeat { get; set; } = DateTime.UtcNow;  // 마지막 하트비트 시간(연결상태 확인용)
     public Vector3 Position { get; set; } = new Vector3();  // 플레이어의 좌표
