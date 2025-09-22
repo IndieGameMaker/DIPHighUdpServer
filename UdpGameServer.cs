@@ -123,24 +123,18 @@ public class UdpGameServer
                 
                 // 클라이언트 엔드포인 저장할 변수
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
-                EndPoint clientEndPoint = endPoint;
-                
-                // Task.Run 비동기 실행 (확인 필요)
-                var result = await Task.Run(() =>
-                {
-                    return _socket.ReceiveFrom(buffer, 0, _bufferSize, SocketFlags.None, ref clientEndPoint );
-                }, cancellationToken);
+                var result = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, endPoint);
 
                 // 데이터를 수신한 경우
-                if (result > 0)
+                if (result.ReceivedBytes > 0)
                 {
-                    Console.WriteLine("메시지 수신" + Encoding.UTF8.GetString(buffer, 0, result));
+                    Console.WriteLine("메시지 수신" + Encoding.UTF8.GetString(buffer, 0, result.ReceivedBytes));
                     // 수신된 데이터를 큐에 추가
                     _receiveQueue.Enqueue(new ReceivedData
                     {
                         Buffer = buffer,
-                        Length = result,
-                        ClientEndPoint = (IPEndPoint) clientEndPoint,
+                        Length = result.ReceivedBytes,
+                        ClientEndPoint = (IPEndPoint) result.RemoteEndPoint,
                     });
                 }
                 else
@@ -172,10 +166,7 @@ public class UdpGameServer
                 var response = $"ECHO: {message}";
                 var responseBytes = Encoding.UTF8.GetBytes(response);
 
-                await Task.Run(() =>
-                {
-                    _socket.SendTo(responseBytes, SocketFlags.None, receivedData.ClientEndPoint);
-                });
+                await _socket.SendToAsync(new ArraySegment<byte>(responseBytes, 0, responseBytes.Length), SocketFlags.None, receivedData.ClientEndPoint);
                 
                 _bufferPool.Return(receivedData.Buffer);
             }

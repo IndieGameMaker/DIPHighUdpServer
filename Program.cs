@@ -12,18 +12,15 @@ class Program
         var server = new UdpGameServer(port);
 
         // Ctrl + C 이벤트 연결
-        Console.CancelKeyPress += (sender, e) =>
+        Console.CancelKeyPress += async (sender, e) =>
         {
             e.Cancel = true;
             Console.WriteLine("서버 종료 중 ...");
             
             // 서버 종료 작업을 처리
             // StopServer 처리
-            Task.Run(async () =>
-            {
-                await server.StopAsync();
-                Environment.Exit(0);
-            });
+            await server.StopAsync();
+            Environment.Exit(0);
         };        
         
         try
@@ -34,8 +31,5 @@ class Program
         {
             Console.WriteLine($"서버 실행 중 오류 발생: {e.Message}");
         }
-        
-        
-
     }
 }
