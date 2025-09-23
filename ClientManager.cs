@@ -16,6 +16,15 @@ public class ClientManager
     private readonly object _playerIdLock = new object();
     // 다음 플레이어 ID (1부터 시작)
     private int _nextPlayerId = 1; 
+    
+    // 접속중인 플레이어
+    /* IReadOnlyCollection
+       - Count 프로퍼티로 플레이어 수 확인 가능
+       - 브로드캐스트 시 반복문 사용에 최적
+       - 메모리 복사 없이 성능 효율적
+       - 여전히 읽기 전용으로 안전
+     */
+    public IReadOnlyCollection<ClientInfo> ConnectedPlayers => (IReadOnlyCollection<ClientInfo>)_clients.Values;
 
     public ClientManager()
     {

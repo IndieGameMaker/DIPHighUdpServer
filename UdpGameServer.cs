@@ -211,6 +211,7 @@ public class UdpGameServer
                     await HandleConnectMessage(gameMessage, data.ClientEndPoint);
                     break;
                 case MessageType.Disconnect:
+                    await HandleDisconnectMessage(gameMessage, data.ClientEndPoint);
                     break;
                 case MessageType.PlayerJoin:
                     break;
@@ -234,6 +235,8 @@ public class UdpGameServer
         }
     }
 
+
+
     #region 메시지 타입별 전송 메서드
     
     // 연결 요청 메시지 처리
@@ -248,6 +251,126 @@ public class UdpGameServer
         var responseMessage = GameProtocal.CreateMessage(MessageType.ConnectResponse, response.PlayerId, response);
         // 응답 메시지 전송
         await SendGameMessage(responseMessage, clientEndPoint);
+    }
+    
+    private async Task HandleDisconnectMessage(GameMessage message, IPEndPoint clientEndPoint)
+    {
+        // 클라이언트 관리자를 통한 연결 해제
+        var disconnectedClient = _clientManager.DisconnectPlayer(clientEndPoint); 
+        
+        if (disconnectedClient != null)
+        {
+            // 플레이어 퇴장 브로드캐스트
+            await BroadcastPlayerLeave(disconnectedClient.PlayerId, disconnectedClient.PlayerName); 
+        }
+    }    
+    
+    #region 송신 처리 메서드
+
+    /// <summary>
+    /// 플레이어 퇴장 브로드캐스트
+    /// </summary>
+    private async Task BroadcastPlayerLeave(string playerId, string playerName)
+    {
+        var playerData = new PlayerData
+        {
+            PlayerId = playerId, // 플레이어 ID
+            PlayerName = playerName, // 플레이어 이름
+            Position = new Vector3(), // 빈 위치
+            Rotation = new Vector3(), // 빈 회전
+            LastUpdate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() // 현재 시간
+        };
+        
+        var message = GameProtocal.CreateMessage(MessageType.PlayerLeave, "SERVER", playerData); // 플레이어 퇴장 메시지 생성
+        await BroadcastToAll(message, playerId); // 해당 플레이어를 제외한 모든 클라이언트에게 브로드캐스트
+    }
+    
+    // 모든 클라이언트에게 메시지 브로드캐스트 (특정 플레이어 제외)
+    /*
+      1. 순차적 방식 (await foreach)
+
+       foreach (var client in _clientManager.ConnectedPlayers)
+       {
+           if (excludePlayerId != null && client.PlayerId == excludePlayerId)
+               continue;
+
+           await SendGameMessage(message, client.EndPoint); // 순차 실행
+       }
+
+       2. 병렬 방식 (Task.Add + Task.WhenAll)
+
+       var tasks = new List<Task>();
+       foreach (var client in _clientManager.ConnectedPlayers)
+       {
+           if (excludePlayerId != null && client.PlayerId == excludePlayerId)
+               continue;
+
+           tasks.Add(SendGameMessage(message, client.EndPoint)); // 병렬 준비
+       }
+       await Task.WhenAll(tasks); // 모든 작업 동시 실행
+
+       성능 차이:
+
+       순차적 방식
+
+       클라이언트 A: [████████] 100ms
+       클라이언트 B:          [████████] 100ms
+       클라이언트 C:                   [████████] 100ms
+       총 소요 시간: 300ms
+
+       병렬 방식 (현재 코드)
+
+       클라이언트 A: [████████] 100ms
+       클라이언트 B: [████████] 100ms (동시 실행)
+       클라이언트 C: [████████] 100ms (동시 실행)
+       총 소요 시간: 100ms
+
+       장단점 비교:
+
+       | 구분      | 순차적 방식        | 병렬 방식         |
+       |---------|---------------|---------------|
+       | 성능      | 느림 (N × 전송시간) | 빠름 (최대 전송시간)  |
+       | 메모리     | 적음            | 많음 (Task 객체들) |
+       | 에러 처리   | 즉시 중단 가능      | 일부 실패해도 계속    |
+       | 네트워크 부하 | 분산됨           | 집중됨           |
+       | 코드 복잡도  | 단순            | 약간 복잡         |
+
+       실제 성능 시나리오:
+
+       100명 접속, 각 전송 50ms인 경우:
+       - 순차적: 100 × 50ms = 5초
+       - 병렬: 50ms = 0.05초 (100배 빠름)
+
+       권장사항:
+
+       현재 코드(병렬)가 올바른 선택:
+       // 게임에서 브로드캐스트는 실시간성이 중요
+       // 예: 플레이어 위치 동기화, 채팅 메시지
+
+       순차적이 나은 경우:
+       // 순서가 중요하거나 네트워크 대역폭 제한이 있는 경우
+       // 예: 대용량 파일 전송, 순차적 명령어 실행
+
+       결론: 게임 서버의 브로드캐스트에서는 병렬 방식이 필수입니다. 실시간
+       멀티플레이어 게임에서 지연은 치명적이기 때문입니다.
+     */    
+    private async Task BroadcastToAll(GameMessage message, string? excludePlayerId = null)
+    {
+        var tasks = new List<Task>(); // 비동기 전송 작업 목록
+
+        // 클라이언트에게 응답 전송
+        // 모든 접속 중인 플레이어 순회
+        foreach (var client in _clientManager.ConnectedPlayers) 
+        {
+            // 제외할 플레이어는 건너뛰기
+            if (excludePlayerId != null && client.PlayerId == excludePlayerId) 
+                continue;
+                
+            // 각 클라이언트에게 메시지 전송 작업 추가
+            tasks.Add(SendGameMessage(message, client.EndPoint)); 
+        }
+        
+        await Task.WhenAll(tasks); // 모든 전송 작업이 완료될 때까지 대기
     }
     
     // 에코 메시지 처리
@@ -268,6 +391,7 @@ public class UdpGameServer
         // var responseBytes = Encoding.UTF8.GetBytes(response);
         // await _socket.SendToAsync(new ArraySegment<byte>(responseBytes, 0, responseBytes.Length), SocketFlags.None, receivedData.ClientEndPoint);
     }
+    #endregion
 
     public async Task StopAsync()
     {

@@ -59,6 +59,18 @@ public struct TransformData
     public Vector3 Rotation { get; set; }    // 새로운 회전
     public float DeltaTime { get; set; }     // 이전 업데이트로부터의 시간 간격
 }
+
+/// <summary>
+/// 플레이어 정보 구조체
+/// </summary>
+public struct PlayerData
+{
+    public string PlayerId { get; set; }     // 플레이어 ID
+    public string PlayerName { get; set; }   // 플레이어 이름
+    public Vector3 Position { get; set; }    // 현재 위치
+    public Vector3 Rotation { get; set; }    // 현재 회전
+    public long LastUpdate { get; set; }     // 마지막 업데이트 시간
+}
 #endregion
 
 // 메시지 직렬화/역직렬화 처리
