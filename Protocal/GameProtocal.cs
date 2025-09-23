@@ -35,7 +35,9 @@ public struct GameMessage
     public long Timestamp { get; set; }   // 메시지 생성시간
     public string Data { get; set; }
 }
-    
+
+#region 메시지 데이터
+
 // 연결 요청 메시지
 public struct ConnectData
 {
@@ -49,6 +51,15 @@ public struct ConnectResponseData
     public string PlayerId { get; set; }
     public string Message { get; set; }  // 응답 메시지
 }
+
+// Transform 업데이트 메시지
+public struct TransformData
+{
+    public Vector3 Position { get; set; }    // 새로운 위치
+    public Vector3 Rotation { get; set; }    // 새로운 회전
+    public float DeltaTime { get; set; }     // 이전 업데이트로부터의 시간 간격
+}
+#endregion
 
 // 메시지 직렬화/역직렬화 처리
 public static class GameProtocal

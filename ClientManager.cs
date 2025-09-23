@@ -79,7 +79,25 @@ public class ClientManager
     }
     #endregion
 
-    // 플레이어 연결 해제
+    #region 플레이어 연결 해제
+
+    public ClientInfo? DisconnectPlayer(IPEndPoint endPoint)
+    {
+        var endPointKey = endPoint.ToString();
+        
+        // EndPoint로 Player ID 조회  _endPointToPlayerId
+        if (_endPointToPlayerId.TryGetValue(endPointKey, out var playerId))
+        {
+            // Player ID로 Client 정보 삭제
+            if (_clients.TryRemove(playerId, out var clientInfo))
+            {
+                Console.WriteLine($"플레이어 연결해제: {clientInfo.PlayerName} , EndPoint: {endPoint}");
+                return clientInfo;
+            }
+        }
+        return null;
+    }
+    #endregion
     
     // 플레이어 Transform 정보 업데이트
     
