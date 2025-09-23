@@ -208,29 +208,23 @@ public class UdpGameServer
             switch (gameMessage.Type)
             {
                 case MessageType.Connect:
-                    break;
-                case MessageType.ConnectResponse:
+                    await HandleConnectMessage(gameMessage, data.ClientEndPoint);
                     break;
                 case MessageType.Disconnect:
                     break;
                 case MessageType.PlayerJoin:
                     break;
-                case MessageType.PlayerLeave:
-                    break;
                 case MessageType.TransformUpdate:
                     break;
                 case MessageType.TransformSync:
                     break;
-                case MessageType.RpcCall:
-                    break;
-                case MessageType.RpcCallResponse:
-                    break;
                 case MessageType.Heartbeat:
                     break;
                 case MessageType.Echo:
+                    await HandleEchoMessage(gameMessage, data.ClientEndPoint);
                     break;
                 default:
-                    Console.WriteLine("알수없는 메시지 타입");
+                    Console.WriteLine("알 수 없는 메시지 타입");
                     break;
             }
         }
@@ -238,6 +232,41 @@ public class UdpGameServer
         {
             Console.WriteLine($"메시지 처리중 오류:{e.Message}");
         }
+    }
+
+    #region 메시지 타입별 전송 메서드
+    
+    // 연결 요청 메시지 처리
+    private async Task HandleConnectMessage(GameMessage message, IPEndPoint clientEndPoint)
+    {
+        // 연결요청 데이터 역직렬화
+        var connectData = GameProtocal.GetData<ConnectData>(message);
+        // 클라이언트 관리자에 연결 요청
+        var response = _clientManager.ConnectPlayer(clientEndPoint, connectData);
+        
+        // 연결 응답 메시지 생성
+        var responseMessage = GameProtocal.CreateMessage(MessageType.ConnectResponse, response.PlayerId, response);
+        // 응답 메시지 전송
+        await SendGameMessage(responseMessage, clientEndPoint);
+    }
+    
+    // 에코 메시지 처리
+    private async Task HandleEchoMessage(GameMessage message, IPEndPoint clientEndPoint)
+    {
+        // 에코 응답 메시지 생성
+        var echoResponce = GameProtocal.CreateMessage(MessageType.Echo, "SERVER", $"ECHO:{message.Data}");
+        await SendGameMessage(echoResponce, clientEndPoint);
+    }
+    #endregion
+
+    // 게임 메시지 전송 공통 메소드
+    private async Task SendGameMessage(GameMessage message, IPEndPoint clientEndPoint)
+    {
+        var messageData = GameProtocal.Serialize(message);
+        await _socket.SendToAsync(new ArraySegment<byte>(messageData,0,messageData.Length), clientEndPoint);
+        
+        // var responseBytes = Encoding.UTF8.GetBytes(response);
+        // await _socket.SendToAsync(new ArraySegment<byte>(responseBytes, 0, responseBytes.Length), SocketFlags.None, receivedData.ClientEndPoint);
     }
 
     public async Task StopAsync()

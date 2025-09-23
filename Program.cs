@@ -4,6 +4,13 @@ class Program
 {
     static async Task Main(string[] args)
     {
+        // 테스트 클라이언트 실행여부 확인
+        if (args.Length > 0 && args[0] == "test")
+        {
+            await TestClientProgram.RunTestClientsAsync();
+            return;
+        }
+        
         Console.WriteLine("=== UDP 게임서버 시작===");
 
         const int port = 9999;
